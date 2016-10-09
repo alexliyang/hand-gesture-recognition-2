@@ -5,9 +5,7 @@ import matplotlib.gridspec as gridspec
 from matplotlib import cm
 from scipy.signal import medfilt as med_filter
 from scipy.ndimage.filters import gaussian_filter
-import cv2
-import os
-import sys
+import cv2, os, sys
 sys.path.append('/usr/local/lib/python2.7/site-packages')
 
 def normalize_to_gray_scale(old_array, min, max):
@@ -47,27 +45,24 @@ def preprocess_images(rootdir, image_each_row):
 			max_dist = np.amax(imarray);
 			low_conf_ind =  confarray < np.median(confarray) * 1.15
 			high_dep_ind = imarray > np.median(imarray) * 0.85
-
 			imarray[low_conf_ind] = 0
 			imarray[high_dep_ind] = 0
 			imarray = normalize_to_gray_scale(imarray, np.amin(imarray), max_dist)
 			sub = plt.subplot(grid[counter/image_each_row, counter%image_each_row])
+			points = imarray > 0
+			# x,y,w,h = cv2.boundingRect(points)
+			# print "boudning box:", x,y,w,h
 			sub.axes.get_xaxis().set_visible(False)
 			sub.axes.get_yaxis().set_visible(False)
 			sub.imshow(imarray, cmap=cm.gray)
 			counter+= 1
-	
-	# f = open('testarray.txt', 'w')
-		
-	# f.write(np.array_str(imarray,  max_line_width='nan'))
-	# f.close()
+
 	plt.axis('off')
 	plt.show()
 
 
 if __name__ == "__main__":
-
-	rootdir = '/Users/xingjia/Development/hand-gesture/SSF/ssf14-{subject}-depth/{gesture}'
+	rootdir = 'SSF/ssf14-{subject}-depth/{gesture}'
 	subject = sys.argv[1]
 	gesture_id = sys.argv[2]
 	image_each_row = sys.argv[3]
