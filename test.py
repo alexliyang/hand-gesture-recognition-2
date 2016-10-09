@@ -15,14 +15,20 @@ def normalize_to_gray_scale(old_array, min, max):
 			new_array[row_idx][elm_idx] = (elm - min) * 255 / float(max - min)
 	return new_array
 
-def preprocess_images(rootdir, image_each_row):
+def plot(imarray, grid, counter, image_per_row):
+	sub = plt.subplot(grid[counter/image_per_row, counter%image_per_row])
+	sub.axes.get_xaxis().set_visible(False)
+	sub.axes.get_yaxis().set_visible(False)
+	sub.imshow(imarray, cmap=cm.gray)
+
+def preprocess_images(rootdir, image_per_row):
 	np.set_printoptions(threshold='nan')
 
-	grid = gridspec.GridSpec(image_each_row, image_each_row, wspace=0.0, hspace=0.0)
+	grid = gridspec.GridSpec(image_per_row, image_per_row, wspace=0.0, hspace=0.0)
 	for subdir, dirs, files in os.walk(rootdir):
 		counter = 0
 		for file in files:
-			if counter > image_each_row * image_each_row - 1:
+			if counter > image_per_row * image_per_row - 1:
 				continue
 			image_path = os.path.join(subdir, file)
 			if ("confi" in image_path or not image_path.endswith('.png')):
@@ -30,7 +36,7 @@ def preprocess_images(rootdir, image_each_row):
 			if ("depth" in image_path):
 		   		confi_path = image_path.replace("depth_", "confi_")
 			
-			print "Reading ", image_path	
+			print "Reading", image_path	
 			im = Image.open(image_path)
 			conf = Image.open(confi_path)
 
@@ -45,29 +51,45 @@ def preprocess_images(rootdir, image_each_row):
 			max_dist = np.amax(imarray);
 			low_conf_ind =  confarray < np.median(confarray) * 1.15
 			high_dep_ind = imarray > np.median(imarray) * 0.85
-			imarray[low_conf_ind] = 0
-			imarray[high_dep_ind] = 0
+			imarray[low_conf_ind] = 1
+			imarray[high_dep_ind] = 1
 			imarray = normalize_to_gray_scale(imarray, np.amin(imarray), max_dist)
-			sub = plt.subplot(grid[counter/image_each_row, counter%image_each_row])
-			points = imarray > 0
-			# x,y,w,h = cv2.boundingRect(points)
-			# print "boudning box:", x,y,w,h
-			sub.axes.get_xaxis().set_visible(False)
-			sub.axes.get_yaxis().set_visible(False)
-			sub.imshow(imarray, cmap=cm.gray)
+			
+			imarray = gaussian_filter(imarray, 0.25)
+			imarray = med_filter(imarray, 5)
+
+			# bounding box
+			imarray = crop(imarray, 150)
+			plot(imarray, grid, counter, image_per_row)
+
 			counter+= 1
 
+	# with open('array_test.txt', 'w') as f:
+	# 	f.write(imarray)
 	plt.axis('off')
 	plt.show()
+
+def crop(imarray, max_size):
+	_, threshold = cv2.threshold(imarray.astype(np.uint8), 1, np.amax(imarray), 0)
+	points = cv2.findNonZero(threshold)
+	x,y,w,h = cv2.boundingRect(points)
+	# print (x,y,w,h)
+	rect_side = max(h,w)
+	rect_side = min(rect_side, max_size)
+	# print (x, y, rect_side)
+	imarray = imarray[y-10:y+rect_side-10, x-10:x+rect_side-10]
+	return imarray
+
+
 
 
 if __name__ == "__main__":
 	rootdir = 'SSF/ssf14-{subject}-depth/{gesture}'
 	subject = sys.argv[1]
 	gesture_id = sys.argv[2]
-	image_each_row = sys.argv[3]
+	image_per_row = sys.argv[3]
 
 	rootdir = rootdir.replace('{subject}', subject)
 	rootdir = rootdir.replace('{gesture}', gesture_id)
-	preprocess_images(rootdir, int(image_each_row))
+	preprocess_images(rootdir, int(image_per_row))
 
