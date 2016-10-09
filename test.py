@@ -11,9 +11,11 @@ import sys
 sys.path.append('/usr/local/lib/python2.7/site-packages')
 
 def normalize_to_gray_scale(old_array, min, max):
-	for elm in old_array:
-		elm = (elm - min) * 255 / (max - min)
-	return old_array
+	new_array =  np.zeros(old_array.shape)
+	for row_idx, row in enumerate(old_array):
+		for elm_idx, elm in enumerate(row):
+			new_array[row_idx][elm_idx] = (elm - min) * 255 / float(max - min)
+	return new_array
 
 def preprocess_images(rootdir, image_each_row):
 	np.set_printoptions(threshold='nan')
@@ -43,28 +45,34 @@ def preprocess_images(rootdir, image_each_row):
 
 			#remove low confidence and high dist pixels
 			max_dist = np.amax(imarray);
-			low_conf_ind =  confarray < 150
-			high_dep_ind = imarray > np.median(imarray) - 40
-			print np.array_str(np.median(imarray))
+			low_conf_ind =  confarray < np.median(confarray) * 1.15
+			high_dep_ind = imarray > np.median(imarray) * 0.85
+
 			imarray[low_conf_ind] = 0
 			imarray[high_dep_ind] = 0
-			
+			imarray = normalize_to_gray_scale(imarray, np.amin(imarray), max_dist)
 			sub = plt.subplot(grid[counter/image_each_row, counter%image_each_row])
 			sub.axes.get_xaxis().set_visible(False)
 			sub.axes.get_yaxis().set_visible(False)
 			sub.imshow(imarray, cmap=cm.gray)
 			counter+= 1
 	
-	f = open('testarray.txt', 'w')
+	# f = open('testarray.txt', 'w')
 		
-	f.write(np.array_str(imarray,  max_line_width='nan'))
-	f.close()
+	# f.write(np.array_str(imarray,  max_line_width='nan'))
+	# f.close()
 	plt.axis('off')
 	plt.show()
 
 
 if __name__ == "__main__":
-	rootdir = '/Users/xingjia/Development/hand-gesture/SSF/ssf14--depth/3'
-	image_each_row = sys.argv[1]
+
+	rootdir = '/Users/xingjia/Development/hand-gesture/SSF/ssf14-{subject}-depth/{gesture}'
+	subject = sys.argv[1]
+	gesture_id = sys.argv[2]
+	image_each_row = sys.argv[3]
+
+	rootdir = rootdir.replace('{subject}', subject)
+	rootdir = rootdir.replace('{gesture}', gesture_id)
 	preprocess_images(rootdir, int(image_each_row))
 
