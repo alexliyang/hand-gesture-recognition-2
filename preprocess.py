@@ -7,6 +7,8 @@ from scipy.signal import medfilt as med_filter
 from scipy.ndimage.filters import gaussian_filter
 import cv2, os, sys
 import scipy.misc
+from multiprocessing import Pool
+import os
 
 def normalize_to_gray_scale(old_array, min, max):
     new_array = np.zeros(old_array.shape)
@@ -84,6 +86,7 @@ def preprocess_images(rootdir, image_per_row):
     plt.show()
 
 def preprocess_image(image_path, output_path):
+    print "pre", image_path, output_path
     confi_path = image_path.replace("depth_", "confi_")
 
     im = Image.open(image_path)
@@ -95,7 +98,7 @@ def preprocess_image(image_path, output_path):
     max_dist = np.amax(im)
     depth_array = normalize_to_gray_scale(depth_array, np.amin(depth_array), max_dist)
     depth_array = crop(depth_array, 150)
-
+    print "save", output_path
     scipy.misc.imsave(output_path, depth_array)
 
 def walk_data_folder(rootdir, output_dir="processed/"):
@@ -116,18 +119,26 @@ def walk_gesture_folder(rootdir, subject_folder, gesture_folder, output_dir="pro
     gesture_dir = os.path.join(rootdir, subject_folder, gesture_folder)
     os.makedirs(os.path.join(output_dir, subject_folder, gesture_folder))
     print "Reading folder", gesture_dir
+    results_pool = []
+    pool = Pool(processes=10)
     for image_file in os.listdir(gesture_dir):
         image_path = os.path.join(gesture_dir, image_file)
         if os.path.isfile(image_path):
             if "confi" in image_path or not image_path.endswith(".png"):
                 continue
             image_output_path = os.path.join(output_dir, subject_folder, gesture_folder, image_file)
-            preprocess_image(image_path, image_output_path)
+            results_pool.append(pool.apply_async(preprocess_image, (image_path,image_output_path,)))
+            # preprocess_image(image_path, image_output_path)
+    pool.close()
+    pool.join()
 
 if __name__ == "__main__":
 
+    from time import gmtime, strftime
+    date = strftime("%Y-%m-%d-%H-%M-%S", gmtime())
+
     rootdir = 'SSF/'
-    outputdir = 'processed/'
+    outputdir = 'processed'
 
     if not os.path.exists(outputdir):
         os.makedirs(outputdir)
@@ -148,3 +159,7 @@ if __name__ == "__main__":
         print "processing images for subject:", sys.argv[1], "gesture:", sys.argv[2]
         subject_folder = 'ssf14-' + sys.argv[1] + '-depth/'
         walk_gesture_folder(rootdir, subject_folder, sys.argv[2])
+
+    print "Now:", date
+    print "Rename output to:", outputdir+'_'+date
+    os.rename(outputdir, outputdir+'_'+date)
