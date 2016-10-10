@@ -1,3 +1,4 @@
 *.png
 SSF/
 testarray.txt
+*.pyc
