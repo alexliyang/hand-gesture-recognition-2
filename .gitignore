@@ -2,3 +2,4 @@
 .idea/
 SSF/
 testarray.txt
+*.pyc
