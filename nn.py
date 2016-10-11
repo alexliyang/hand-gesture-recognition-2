@@ -1,5 +1,4 @@
-import os
-import time
+import os, sys, time
 import numpy as np
 from scipy.optimize import fmin_cg
 from PIL import Image
@@ -38,23 +37,27 @@ def J(theta, K, X, y, lmbda):
         regCost += np.square(theta[k][:,1:]).sum()
     regCost = lmbda/(2.0*m) * regCost    
     
-    print cost + regCost
-    return cost + regCost
+    nnCost = cost + regCost
+    print nnCost
+    return nnCost
 
 def JPrime(theta, K, X, y, lmbda):
     lmbda = lmbda * 1.0
     m = X.shape[0]
     (z,a) = forwardProp(theta, K, X)
     
+    # back propagation
     d = [a[-1] - y]
     for k in range(1,K):
         d.append(d[-1].dot(theta[-k])[:,1:] * sigmoidGradient(z[-(k+1)]))
     d.reverse()
-
+    
     thetaGrad = np.array([])
     for k in range(0,K):
         regGrad = np.append(np.zeros((theta[k].shape[0],1)), lmbda/m * theta[k][:,1:], axis=1)
         thetaGrad = np.append(thetaGrad, 1.0/m * d[k].transpose().dot(a[k]) + regGrad)
+    
+    print thetaGrad
     return thetaGrad
 
 def reshapeTheta(theta_flat, layerSizes):
@@ -84,13 +87,12 @@ def train(layerSizes, X, y, lmbda):
         layerSizes, X, y, lmbda = args
         return JPrimeFlattened(x, layerSizes, X, y, lmbda)
 
-    initRange = 0.24
+    initEpsilon = 0.12
     theta = np.array([])
     K = len(layerSizes) - 1
     for k in range(0,K):
-        theta = np.append(theta, np.random.rand(layerSizes[k+1], layerSizes[k]+1) * initRange)
+        theta = np.append(theta, np.random.rand(layerSizes[k+1], layerSizes[k]+1) * 2.0 * initEpsilon - initEpsilon)
 
-    # optimize and return
     thetaOpt = fmin_cg(f, theta, fprime=fPrime, maxiter=400, args=args)
     return reshapeTheta(thetaOpt, layerSizes)
 
@@ -98,17 +100,9 @@ def infer(input, theta):
     inference = np.array(input)
     for k in range(0,len(theta)):
         inference = np.append(1, inference).dot(theta[k].transpose())
-    print inference
     return np.argmax(inference)
 
-if __name__ == "__main__":
-    rootDir = 'processed'
-    nSubject = 8
-    nGesture = 3
-    n = 150*150
-    layerSizes = [n, n/50, n/1000, nGesture]
-    lmbda = 0.01
-
+def readImages(rootDir, nSubject, nGesture, n):
     xs = []
     ys = []
 
@@ -150,13 +144,34 @@ if __name__ == "__main__":
     X = np.vstack(xs)
     y = np.vstack(ys)
 
+    return (X,y)
+
+def trainModel(layerSizes, X, y, lmbda):
     start_time = time.time()
     model = train(layerSizes, X, y, lmbda)
     print "Model trained in %s seconds" % (time.time() - start_time)
-    
+    return model
+
+def testModel(model, X, y):
     nCorrect = 0
-    for i in X.shape[0]:
-        guess = infer(X, model)
+    nGuess = np.zeros(nGesture)
+    for i in range(0,X.shape[0]):
+        guess = infer(X[i], model)
+        nGuess[guess] = nGuess[guess] + 1
         print "Guess", i, ":", guess, "Actual :", np.argmax(y[i])
         nCorrect = nCorrect + y[i][guess]
+    print "nGuesses :", nGuess
+    print nCorrect, "correct out of", X.shape[0]
     print "Accuracy :", nCorrect * 1.0 / X.shape[0] * 100.0, "%"
+
+if __name__ == "__main__":
+    rootDir = 'processed'
+    nSubject = 8
+    nGesture = 4
+    n = 150*150
+    layerSizes = [n, n/5, n/5, nGesture]
+    lmbda = 0.01
+
+    (X,y) = readImages(rootDir, nSubject, nGesture, n)
+    model = trainModel(layerSizes, X, y, lmbda)
+    testModel(model, X, y)
