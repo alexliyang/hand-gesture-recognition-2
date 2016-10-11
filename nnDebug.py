@@ -11,8 +11,8 @@ def numericalGradient(theta, layerSizes, X, y, lmbda):
     e = 1e-8
     for p in range(0,theta.size):
         perturb[p] = e
-        (loss1,_) = nn.nnCostFunctionFlattened(theta - perturb, layerSizes, X, y, lmbda)
-        (loss2,_) = nn.nnCostFunctionFlattened(theta + perturb, layerSizes, X, y, lmbda)
+        loss1 = nn.JFlattened(theta - perturb, layerSizes, X, y, lmbda)
+        loss2 = nn.JFlattened(theta + perturb, layerSizes, X, y, lmbda)
         numgrad[p] = (loss2 - loss1) / (2*e)
         perturb[p] = 0
     return numgrad
@@ -48,8 +48,9 @@ def debug():
     print nn_params
     print "\n"
 
-    (cost, grad) = nn.nnCostFunctionFlattened(nn_params, [input_layer_size, hidden_layer_size, num_labels], X, y_encoded, 0)
-    numgrad = nn.numericalGradient(nn_params, [input_layer_size, hidden_layer_size, num_labels], X, y_encoded, 0)
+    cost = nn.JFlattened(nn_params, [input_layer_size, hidden_layer_size, num_labels], X, y_encoded, 0)
+    grad = nn.JPrimeFlattened(nn_params, [input_layer_size, hidden_layer_size, num_labels], X, y_encoded, 0)
+    numgrad = numericalGradient(nn_params, [input_layer_size, hidden_layer_size, num_labels], X, y_encoded, 0)
     print "\n"
     print cost
     print grad
