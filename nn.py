@@ -51,7 +51,7 @@ def JPrime(theta, K, X, y, lmbda):
     for k in range(1,K):
         d.append(d[-1].dot(theta[-k])[:,1:] * sigmoidGradient(z[-(k+1)]))
     d.reverse()
-    
+
     thetaGrad = np.array([])
     for k in range(0,K):
         regGrad = np.append(np.zeros((theta[k].shape[0],1)), lmbda/m * theta[k][:,1:], axis=1)
@@ -93,7 +93,7 @@ def train(layerSizes, X, y, lmbda):
     for k in range(0,K):
         theta = np.append(theta, np.random.rand(layerSizes[k+1], layerSizes[k]+1) * 2.0 * initEpsilon - initEpsilon)
 
-    thetaOpt = fmin_cg(f, theta, fprime=fPrime, maxiter=400, args=args)
+    thetaOpt = fmin_cg(f, theta, fprime=fPrime, maxiter=40, args=args)
     return reshapeTheta(thetaOpt, layerSizes)
 
 def infer(input, theta):
@@ -169,7 +169,7 @@ if __name__ == "__main__":
     nSubject = 8
     nGesture = 4
     n = 150*150
-    layerSizes = [n, n/5, n/5, nGesture]
+    layerSizes = [n, n/25, n/25, n/25, nGesture]
     lmbda = 0.01
 
     (X,y) = readImages(rootDir, nSubject, nGesture, n)
