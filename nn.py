@@ -1,5 +1,9 @@
+import os
+import time
 import numpy as np
 from scipy.optimize import fmin_cg
+from PIL import Image
+import cv2
 
 def sigmoid(z):
     return 1.0 / (1 + np.exp(z))
@@ -34,6 +38,7 @@ def J(theta, K, X, y, lmbda):
         regCost += np.square(theta[k][:,1:]).sum()
     regCost = lmbda/(2.0*m) * regCost    
     
+    print cost + regCost
     return cost + regCost
 
 def JPrime(theta, K, X, y, lmbda):
@@ -86,14 +91,72 @@ def train(layerSizes, X, y, lmbda):
         theta = np.append(theta, np.random.rand(layerSizes[k+1], layerSizes[k]+1) * initRange)
 
     # optimize and return
-    thetaOpt = fmin_cg(f, theta, maxiter=400, args=args)
+    thetaOpt = fmin_cg(f, theta, fprime=fPrime, maxiter=400, args=args)
     return reshapeTheta(thetaOpt, layerSizes)
 
 def infer(input, theta):
     inference = np.array(input)
     for k in range(0,len(theta)):
         inference = np.append(1, inference).dot(theta[k].transpose())
+    print inference
     return np.argmax(inference)
 
 if __name__ == "__main__":
+    rootDir = 'processed'
+    nSubject = 8
+    nGesture = 3
+    n = 150*150
+    layerSizes = [n, n/50, n/1000, nGesture]
+    lmbda = 0.01
+
+    xs = []
+    ys = []
+
+    iSubject = 0
+    for subjectFolder in os.listdir(rootDir):
+        subjectDir = os.path.join(rootDir, subjectFolder)
+        if not os.path.isdir(subjectDir):
+            continue
+
+        iGesture = 0
+        for gestureFolder in os.listdir(subjectDir):
+            gestureDir = os.path.join(subjectDir, gestureFolder)
+            if not os.path.isdir(gestureDir):
+                continue
+
+            y = np.zeros(nGesture)
+            y[iGesture] = 1
+
+            for imageFile in os.listdir(gestureDir):
+                imagePath = os.path.join(gestureDir, imageFile)
+                if not os.path.isfile(imagePath) or not imagePath.endswith(".png"):
+                    continue
+
+                image = np.array(Image.open(imagePath)).flatten()
+                if not image.size == n:
+                    print "Skip", imagePath, "of size", image.size 
+                    continue 
+                xs.append(image)
+                ys.append(y)
+            
+            iGesture = iGesture + 1
+            if iGesture >= nGesture:
+                break
+
+        iSubject = iSubject + 1
+        if iSubject >= nSubject:
+            break
+
+    X = np.vstack(xs)
+    y = np.vstack(ys)
+
+    start_time = time.time()
+    model = train(layerSizes, X, y, lmbda)
+    print "Model trained in %s seconds" % (time.time() - start_time)
     
+    nCorrect = 0
+    for i in X.shape[0]:
+        guess = infer(X, model)
+        print "Guess", i, ":", guess, "Actual :", np.argmax(y[i])
+        nCorrect = nCorrect + y[i][guess]
+    print "Accuracy :", nCorrect * 1.0 / X.shape[0] * 100.0, "%"
