@@ -11,12 +11,12 @@ def sigmoidGradient(z):
     gz = sigmoid(z)
     return gz * (1 - gz)
 
-def forwardProp(theta, K, X):
+def forwardProp(theta, X):
     m = X.shape[0]
     
     z = [X]
     a = []
-    for k in range(0,K):
+    for k in range(0,len(theta)):
         zk = z[k]
         if k>0: zk = sigmoid(zk)
         a.append(np.append(np.ones((m, 1)), zk, axis=1))
@@ -25,15 +25,15 @@ def forwardProp(theta, K, X):
     
     return (z,a)
 
-def J(theta, K, X, y, lmbda):
+def J(theta, X, y, lmbda):
     lmbda = lmbda * 1.0
     m = X.shape[0]
-    (z,a) = forwardProp(theta, K, X)
+    (z,a) = forwardProp(theta, X)
 
     cost = -1.0/m * (y * np.log(a[-1]) + (1 - y) * np.log(1 - a[-1])).sum()
     
     regCost = 0
-    for k in range(0,K):
+    for k in range(0,len(theta)):
         regCost += np.square(theta[k][:,1:]).sum()
     regCost = lmbda/(2.0*m) * regCost    
     
@@ -41,19 +41,19 @@ def J(theta, K, X, y, lmbda):
     print nnCost
     return nnCost
 
-def JPrime(theta, K, X, y, lmbda):
+def JPrime(theta, X, y, lmbda):
     lmbda = lmbda * 1.0
     m = X.shape[0]
-    (z,a) = forwardProp(theta, K, X)
+    (z,a) = forwardProp(theta, X)
     
     # back propagation
     d = [a[-1] - y]
-    for k in range(1,K):
+    for k in range(1,len(theta)):
         d.append(d[-1].dot(theta[-k])[:,1:] * sigmoidGradient(z[-(k+1)]))
     d.reverse()
 
     thetaGrad = np.array([])
-    for k in range(0,K):
+    for k in range(0,len(theta)):
         regGrad = np.append(np.zeros((theta[k].shape[0],1)), lmbda/m * theta[k][:,1:], axis=1)
         thetaGrad = np.append(thetaGrad, 1.0/m * d[k].transpose().dot(a[k]) + regGrad)
     
@@ -72,11 +72,11 @@ def reshapeTheta(theta_flat, layerSizes):
 
 def JFlattened(theta_flat, layerSizes, X, y, lmbda):
     theta = reshapeTheta(theta_flat, layerSizes)
-    return J(theta, len(layerSizes) - 1, X, y, lmbda)
+    return J(theta, X, y, lmbda)
 
 def JPrimeFlattened(theta_flat, layerSizes, X, y, lmbda):
     theta = reshapeTheta(theta_flat, layerSizes)
-    return JPrime(theta, len(layerSizes) - 1, X, y, lmbda)
+    return JPrime(theta, X, y, lmbda)
 
 def train(layerSizes, X, y, lmbda):
     args = (layerSizes, X, y, lmbda)
@@ -96,11 +96,21 @@ def train(layerSizes, X, y, lmbda):
     thetaOpt = fmin_cg(f, theta, fprime=fPrime, maxiter=40, args=args)
     return reshapeTheta(thetaOpt, layerSizes)
 
-def infer(input, theta):
-    inference = np.array(input)
+def iforwardProp(theta, X):
+    z = [X]
+    a = []
     for k in range(0,len(theta)):
-        inference = np.append(1, inference).dot(theta[k].transpose())
-    return np.argmax(inference)
+        zk = z[k]
+        if k>0: zk = sigmoid(zk)
+        a.append(np.append(np.array([1]), zk))
+        z.append(a[k].dot(theta[k].transpose()))
+    a.append(sigmoid(z[-1]))
+    
+    return (z,a)
+
+def infer(input, theta):
+    (_,a) = iforwardProp(theta, input)
+    return np.argmax(a[-1])
 
 def readImages(rootDir, nSubject, nGesture, n):
     xs = []
@@ -166,10 +176,10 @@ def testModel(model, X, y):
 
 if __name__ == "__main__":
     rootDir = 'processed'
-    nSubject = 8
-    nGesture = 4
+    nSubject = 5
+    nGesture = 10
     n = 150*150
-    layerSizes = [n, n/25, n/25, n/25, nGesture]
+    layerSizes = [n, n/50, n/50, n/50, nGesture]
     lmbda = 0.01
 
     (X,y) = readImages(rootDir, nSubject, nGesture, n)
