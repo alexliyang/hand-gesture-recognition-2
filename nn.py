@@ -55,8 +55,7 @@ def JPrime(theta, X, y, lmbda):
     thetaGrad = np.array([])
     for k in range(0,len(theta)):
         regGrad = np.append(np.zeros((theta[k].shape[0],1)), lmbda/m * theta[k][:,1:], axis=1)
-        thetaGrad = np.append(thetaGrad, 1.0/m * d[k].transpose().dot(a[k]) + regGrad)
-    
+        thetaGrad = np.append(thetaGrad, 1.0/m * d[k].transpose().dot(a[k]) + regGrad) * -1
     print thetaGrad
     return thetaGrad
 
@@ -93,6 +92,7 @@ def train(layerSizes, X, y, lmbda):
     for k in range(0,K):
         theta = np.append(theta, np.random.rand(layerSizes[k+1], layerSizes[k]+1) * 2.0 * initEpsilon - initEpsilon)
 
+    #thetaOpt = fmin_cg(f, theta, maxiter=40, args=args)
     thetaOpt = fmin_cg(f, theta, fprime=fPrime, maxiter=40, args=args)
     return reshapeTheta(thetaOpt, layerSizes)
 
@@ -176,12 +176,22 @@ def testModel(model, X, y):
 
 if __name__ == "__main__":
     rootDir = 'processed'
-    nSubject = 5
-    nGesture = 10
+    nSubject = 1
+    nGesture = 4
     n = 150*150
-    layerSizes = [n, n/50, n/50, n/50, nGesture]
+    nHiddenLayer = 3
+    hiddenLayerSize = n/20
     lmbda = 0.01
 
+    hiddenLayerSizes = []
+    for i in range(0,nHiddenLayer):
+    	hiddenLayerSizes.append(hiddenLayerSize)
+    layerSizes = [n] + hiddenLayerSizes + [nGesture]
+    
     (X,y) = readImages(rootDir, nSubject, nGesture, n)
     model = trainModel(layerSizes, X, y, lmbda)
     testModel(model, X, y)
+
+    f = open("savedModel", "w")
+    json.dump(model, f)
+    f.close()

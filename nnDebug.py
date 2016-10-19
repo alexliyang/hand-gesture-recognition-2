@@ -18,13 +18,15 @@ def numericalGradient(theta, layerSizes, X, y, lmbda):
     return numgrad
 
 def debug():
-    input_layer_size = 2
-    hidden_layer_size = 2
+    input_layer_size = 4
+    hidden_layer_size = 3
     num_labels = 2
     m = 1
+    layerSizes = [input_layer_size, hidden_layer_size, hidden_layer_size, num_labels]
 
     Theta1 = debugInitialWeights(input_layer_size, hidden_layer_size)
-    Theta2 = debugInitialWeights(hidden_layer_size, num_labels)
+    Theta2 = debugInitialWeights(hidden_layer_size, hidden_layer_size)
+    Theta3 = debugInitialWeights(hidden_layer_size, num_labels)
     X  = debugInitialWeights(input_layer_size - 1, m)
     y  = np.array([1])
 
@@ -44,18 +46,18 @@ def debug():
     print y_encoded
     print y_encoded.shape
 
-    nn_params = np.append(Theta1, Theta2)
+    nn_params = np.append(np.append(Theta1, Theta2), Theta3)
     print nn_params
     print "\n"
 
-    cost = nn.JFlattened(nn_params, [input_layer_size, hidden_layer_size, num_labels], X, y_encoded, 0)
-    grad = nn.JPrimeFlattened(nn_params, [input_layer_size, hidden_layer_size, num_labels], X, y_encoded, 0)
-    numgrad = numericalGradient(nn_params, [input_layer_size, hidden_layer_size, num_labels], X, y_encoded, 0)
+    cost = nn.JFlattened(nn_params, layerSizes, X, y_encoded, 0)
+    grad = nn.JPrimeFlattened(nn_params, layerSizes, X, y_encoded, 0)
+    numgrad = numericalGradient(nn_params, layerSizes, X, y_encoded, 0)
     print "\n"
     print cost
     print grad
     print numgrad
-
+    print grad - numgrad
 
 if __name__ == "__main__":
     debug()
