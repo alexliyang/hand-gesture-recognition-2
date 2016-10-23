@@ -3,6 +3,7 @@ import numpy as np
 from scipy.optimize import fmin_cg
 from PIL import Image
 import cv2
+import json
 
 def sigmoid(z):
     return 1.0 / (1 + np.exp(z))
@@ -192,6 +193,6 @@ if __name__ == "__main__":
     model = trainModel(layerSizes, X, y, lmbda)
     testModel(model, X, y)
 
-    f = open("savedModel", "w")
+    f = open("savedModel.json", "w")
     json.dump(model, f)
     f.close()
