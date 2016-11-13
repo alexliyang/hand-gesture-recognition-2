@@ -111,7 +111,7 @@ def preprocess_image(image_path, output_path):
     depth_array = substract_background(depth_array, conf_array, empty_pixel_val=np.amin(depth_array))
     depth_array = build_confidence(depth_array, conf_array, empty_pixel_val=np.amin(depth_array))
 
-    depth_array = normalize_to_gray_scale(depth_array, np.amin(depth_array), np.amax(depth_array), reverse=True)
+    #depth_array = normalize_to_gray_scale(depth_array, np.amin(depth_array), np.amax(depth_array), reverse=True)
     depth_array = crop(depth_array, 150)
     print "save", output_path
     scipy.misc.imsave(output_path, depth_array)
