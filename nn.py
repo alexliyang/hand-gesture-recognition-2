@@ -75,7 +75,7 @@ def JPrimeFlattened(theta_flat, layerSizes, X, y, lmbda):
     theta = reshapeTheta(theta_flat, layerSizes)
     return JPrime(theta, X, y, lmbda)
 
-def train(layerSizes, X, y, lmbda):
+def train(layerSizes, X, y, lmbda, maxIter):
     args = (layerSizes, X, y, lmbda)
     def f(x, *args):
         layerSizes, X, y, lmbda = args
@@ -90,7 +90,7 @@ def train(layerSizes, X, y, lmbda):
     for k in range(0,K):
         theta = np.append(theta, np.random.rand(layerSizes[k+1], layerSizes[k]+1) * 2.0 * initEpsilon - initEpsilon)
 
-    thetaOpt = fmin_cg(f, theta, fprime=fPrime, maxiter=40, args=args)
+    thetaOpt = fmin_cg(f, theta, fprime=fPrime, maxiter=maxIter, args=args)
     return reshapeTheta(thetaOpt, layerSizes)
 
 def infer(input, theta):
