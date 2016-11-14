@@ -1,5 +1,9 @@
 *.png
 .idea/
 SSF/
+cropped_merged*/
+hand_size_labeled/
+processed*/
+test*/
 testarray.txt
 *.pyc
