@@ -6,33 +6,34 @@ from keras.utils.np_utils import to_categorical
 
 class CNN:
     def __init__(self, n_classes):
-#        self.model.add(Dropout(0.25))
 #        self.model.add(SpatialDropout2D(0.25))
 
         self.model = Sequential()
-        self.model.add(Convolution2D(20, 7, 7, subsample=(2, 2), input_shape=(1, 100, 100)))
+        self.model.add(Convolution2D(20, 5, 5, subsample=(2, 2), input_shape=(1, 100, 100)))
         self.model.add(Activation('relu'))
 
-        self.model.add(Convolution2D(35, 5, 5, subsample=(2, 2)))
+        self.model.add(Convolution2D(25, 3, 3, subsample=(2, 2)))
         self.model.add(Activation('relu'))
         self.model.add(MaxPooling2D(pool_size=(3, 3), strides=(2, 2)))
         
-        self.model.add(Convolution2D(40, 3, 3))
+        self.model.add(Convolution2D(30, 2, 2))
         self.model.add(Activation('relu'))
 
-        self.model.add(Convolution2D(40, 3, 3))
+        self.model.add(Convolution2D(30, 2, 2))
         self.model.add(Activation('relu'))
         
-        self.model.add(Convolution2D(35, 3, 3))
+        self.model.add(Convolution2D(25, 2, 2))
         self.model.add(Activation('relu'))
 #        self.model.add(MaxPooling2D(pool_size=(3, 3), strides=(2, 2)))
 
         self.model.add(Flatten())
-        self.model.add(Dense(256))
+        self.model.add(Dense(512))
         self.model.add(Activation('relu'))
+ #       self.model.add(Dropout(0.5))
         
-        self.model.add(Dense(256))
+        self.model.add(Dense(512))
         self.model.add(Activation('relu'))
+        self.model.add(Dropout(0.5))
 
         self.model.add(Dense(n_classes))
         self.model.add(Activation('softmax'))
