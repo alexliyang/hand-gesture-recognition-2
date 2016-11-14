@@ -10,6 +10,8 @@ import scipy.misc
 from multiprocessing import Pool
 import os, math
 
+from skimage import morphology
+
 def normalize_to_gray_scale(old_array, min, max, reverse=False):
     new_array = np.zeros(old_array.shape)
     for row_idx, row in enumerate(old_array):
@@ -27,9 +29,19 @@ def plot_overview(depth_array, grid, counter, image_per_row):
 
 
 def crop(depth_array, max_size):
-    _, threshold = cv2.threshold(depth_array.copy().astype(np.uint8), 128, np.amax(depth_array), 1)
+    depth_array_approx = np.floor(depth_array).astype(np.uint8)
+
+    small_obj_points = morphology.remove_small_objects(depth_array_approx, min_size=100)
+    print small_obj_points.shape
+    depth_array[small_obj_points] = 0
+
+    _, threshold = cv2.threshold(depth_array_approx.copy().astype(np.uint8), 128, np.amax(depth_array), 1)
     points = cv2.findNonZero(threshold)
-    x, y, w, h = cv2.boundingRect(points)
+    # distance = ndimage.distance_transform_edt(image)
+    # local_maxi = peak_local_max(distance, indices=False, footprint=np.ones((3, 3)), labels=image)
+    # markers = morphology.label(local_maxi)
+    # labels_ws = watershed(-distance, markers, mask=image)
+
     print (x,y,w,h)
     # rect_side = max(h, w)
     # rect_side = min(rect_side, max_size)
@@ -41,14 +53,14 @@ def crop(depth_array, max_size):
     return depth_array
 
 
-def substract_background(depth_array, conf_array, empty_pixel_val=254):
+def substract_background(depth_array, conf_array, empty_pixel_val=254, threshold_c=1.1, threshold_d=0.9):
     # median filter and gaussian filter
     depth_array = med_filter(depth_array, 3)
     depth_array = gaussian_filter(depth_array, 0.5)
 
     # remove low confidence and high dist pixels
-    low_conf_ind = conf_array < np.median(conf_array) * 1.1
-    high_dep_ind = depth_array > np.median(depth_array) * 0.9
+    low_conf_ind = conf_array < np.median(conf_array) * threshold_c
+    high_dep_ind = depth_array > np.median(depth_array) * threshold_d
     depth_array[low_conf_ind] = empty_pixel_val
     depth_array[high_dep_ind] = empty_pixel_val
 
@@ -91,7 +103,7 @@ def preprocess_images(rootdir, image_per_row):
             confarray = np.array(conf)
 
             depth_array = substract_background(depth_array, confarray)
-            depth_array = crop(depth_array, 150)
+            # depth_array = crop(depth_array, 150)
 
             plot_overview(depth_array, grid, counter, image_per_row)
 
@@ -108,31 +120,38 @@ def preprocess_image(image_path, output_path):
     depth_array = np.array(im)
     conf_array = np.array(conf)
 
-    depth_array = substract_background(depth_array, conf_array, empty_pixel_val=np.amin(depth_array))
-    depth_array = build_confidence(depth_array, conf_array, empty_pixel_val=np.amin(depth_array))
+    depth_array = substract_background(depth_array, conf_array, empty_pixel_val=20000)
+    # depth_array = build_confidence(depth_array, conf_array, empty_pixel_val=np.amin(depth_array))
 
-    #depth_array = normalize_to_gray_scale(depth_array, np.amin(depth_array), np.amax(depth_array), reverse=True)
-    depth_array = crop(depth_array, 150)
-    print "save", output_path
-    scipy.misc.imsave(output_path, depth_array)
+    # depth_array = normalize_to_gray_scale(depth_array, np.amin(depth_array), np.amax(depth_array), reverse=True)
+    # depth_array = crop(depth_array, 150)
+    # print "save", output_path
+    img = scipy.misc.toimage(depth_array, high=np.amax(depth_array), low=np.amin(depth_array), mode='I')
+    img.save(output_path)
 
 def walk_data_folder(rootdir, output_dir="processed/"):
     for subject_folder in os.listdir(rootdir):
         subject_dir = os.path.join(rootdir, subject_folder)
         if os.path.isdir(subject_dir):
-            walk_subject_folder(rootdir, subject_folder, output_dir)
+            walk_subject_folder(rootdir, subject_folder, output_dir=output_dir)
 
 def walk_subject_folder(rootdir, subject_folder, output_dir="processed/"):
     subject_dir = os.path.join(rootdir, subject_folder)
-    os.makedirs(os.path.join(output_dir, subject_folder))
+    subject_output_dir = os.path.join(output_dir, subject_folder)
+    if not os.path.exists(subject_output_dir):
+        os.makedirs(subject_output_dir)
+
     for gesture_folder in os.listdir(subject_dir):
         gesture_dir = os.path.join(rootdir, subject_folder, gesture_folder)
         if os.path.isdir(gesture_dir):
-            walk_gesture_folder(rootdir, subject_folder, gesture_folder, output_dir="processed/")
+            walk_gesture_folder(rootdir, subject_folder, gesture_folder, output_dir=output_dir)
 
 def walk_gesture_folder(rootdir, subject_folder, gesture_folder, output_dir="processed/"):
     gesture_dir = os.path.join(rootdir, subject_folder, gesture_folder)
-    os.makedirs(os.path.join(output_dir, subject_folder, gesture_folder))
+    gesture_output_dir = os.path.join(output_dir, subject_folder, gesture_folder)
+    print "gesture_dir is:",
+    if not os.path.exists(gesture_output_dir):
+        os.makedirs(gesture_output_dir)
 
     print "Reading folder", gesture_dir
     results_pool = []
@@ -143,6 +162,7 @@ def walk_gesture_folder(rootdir, subject_folder, gesture_folder, output_dir="pro
         if os.path.isfile(image_path):
             if "confi" in image_path or not image_path.endswith(".png"):
                 continue
+
             image_output_path = os.path.join(output_dir, subject_folder, gesture_folder, image_file)
             results_pool.append(pool.apply_async(preprocess_image, (image_path,image_output_path,)))
             # preprocess_image(image_path, image_output_path)
@@ -150,19 +170,21 @@ def walk_gesture_folder(rootdir, subject_folder, gesture_folder, output_dir="pro
     pool.close()
     pool.join()
 
+def process_single_file(rootdir, subject_folder, gesture_folder, image_id, output_dir="processed/"):
+    image_path= os.path.join(rootdir, subject_folder, gesture_folder, 'depth_'+image_id+'.png');
+    preprocess_image(image_path, 'processed_image_'+image_id+'.png')
+
+
 if __name__ == "__main__":
 
     from time import gmtime, strftime
     date = strftime("%Y-%m-%d-%H-%M-%S", gmtime())
 
     rootdir = 'SSF/'
-    outputdir = 'processed'
+    outputdir = 'processed_full_subtract_only'
 
     if not os.path.exists(outputdir):
         os.makedirs(outputdir)
-    else:
-        print "Remove output folder before making a new one :)"
-        exit()
 
     if (len(sys.argv) < 2):
         print "Processing all images."
@@ -171,13 +193,14 @@ if __name__ == "__main__":
     if (len(sys.argv) == 2):
         print "Processing images for subject: ", sys.argv[1]
         subject_folder = 'ssf14-' + sys.argv[1] + '-depth/'
-        walk_subject_folder(rootdir, subject_folder)
+        walk_subject_folder(rootdir, subject_folder, output_dir=outputdir)
 
     if (len(sys.argv) == 3):
         print "processing images for subject:", sys.argv[1], "gesture:", sys.argv[2]
         subject_folder = 'ssf14-' + sys.argv[1] + '-depth/'
-        walk_gesture_folder(rootdir, subject_folder, sys.argv[2])
+        walk_gesture_folder(rootdir, subject_folder, sys.argv[2], output_dir=outputdir)
 
-    print "Now:", date
-    print "Rename output to:", outputdir+'_'+date
-    os.rename(outputdir, outputdir+'_'+date)
+    if (len(sys.argv) == 4):
+        print "processing single image."
+        subject_folder = 'ssf14-' + sys.argv[1] + '-depth/'
+        process_single_file(rootdir, subject_folder, sys.argv[2], sys.argv[3], output_dir=outputdir)
