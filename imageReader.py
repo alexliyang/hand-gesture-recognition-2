@@ -4,11 +4,11 @@ from PIL import Image
 
 class ImageReader:
     def __init__(self):
-        self.rootDir = 'cropped_final'
+        self.rootDir = 'final'
         self.n = 100*100
-        self.nGesture = 6
+        self.nGesture = 28
     
-    def readImages(self, make1d=True):
+    def readImages(self, make1d=True, validationRatio=0.1):
         xs = []
         ys = []
 
@@ -35,8 +35,19 @@ class ImageReader:
                 ys.append(y)
             
             iGesture = iGesture + 1
+ 
+        xt = []
+        yt = []
+        nTrain= len(xs) - int(validationRatio * len(xs))
+        permutation = np.random.permutation(len(xs))
+        for i in permutation[:nTrain]:
+            xt.append(xs[i])
+            yt.append(ys[i])
+            
+        xv = []
+        yv = []
+        for i in permutation[nTrain:]:
+            xv.append(xs[i])
+            yv.append(ys[i])
 
-        X = np.asarray(xs)
-        y = np.asarray(ys)
-
-        return (X,y)
+        return (np.asarray(xt), np.asarray(yt)), (np.asarray(xv), np.asarray(yv))
