@@ -4,13 +4,7 @@ from PIL import Image
 from skimage.feature import hog
 import matplotlib.pyplot as plt
 
-def extract_hog_feature(input_img_path):
-    # input_img_path = 'testPCA.png'
-
-    image = Image.open(input_img_path)
-
-    depth_array = np.array(image)
-
+def extract_hog_feature(image):
     fd = hog(image, orientations=360, pixels_per_cell=(16, 16),
                         cells_per_block=(1, 1), visualise=False)
     # print len(fd)
@@ -49,12 +43,12 @@ class ImageReader:
                 if not os.path.isfile(imagePath) or not imagePath.endswith(".png"):
                     continue
 
-                # image = np.array(Image.open(imagePath))
+                image = Image.open(imagePath)
                 if make1d: 
-                    image = extract_hog_feature(imagePath)
+                    image = extract_hog_feature(image)
                     self.n = 360
                 else:
-                    image = [image]
+                    image = [np.array(image)]
                 xs.append(image)
                 ys.append(y)
             
